@@ -35,11 +35,18 @@ class Server extends Model
      *
      * @return string|null
      */
-    public function getImageUrlAttribute()
+    public function getImageUrlAttribute(): ?string
     {
-        if ($this->image_path) {
-            return Storage::disk('public')->url($this->image_path);
+        if (!$this->image_path) {
+            return null;
         }
-        return null;
+
+        // If running in the local environment, return a relative path for the Vite proxy.
+        if (app()->environment('local')) {
+            return '/storage/' . $this->image_path;
+        }
+
+        // For production (like on Render), return the full, absolute URL.
+        return Storage::disk('public')->url($this->image_path);
     }
 }

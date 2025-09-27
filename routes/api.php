@@ -16,3 +16,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Esta línea mágica crea todas las rutas CRUD para tu API de servidores
 Route::apiResource('servers', ServerController::class);
+Route::post('/servers/update-order', [ServerController::class, 'updateOrder']);

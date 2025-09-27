@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Server;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 
 class ServerController extends Controller
 {
@@ -14,7 +15,7 @@ class ServerController extends Controller
      */
     public function index()
     {
-        return Server::all();
+        return Server::orderBy('sort_order', 'asc')->get();
     }
 
     /**
@@ -22,27 +23,22 @@ class ServerController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Validar los datos de entrada
         $validatedData = $request->validate([
             'host' => 'required|string|max:255',
-            'ip' => 'required|ip',
+            'ip' => 'required|ipv4',
             'description' => 'required|string|max:200',
-            'image' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048|dimensions:width=300,height=300'
+            'image' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
-        // 2. Manejar la subida de la imagen
-        // La imagen se guardará en `storage/app/public/servers`
-        $path = $request->file('image')->store('servers', 'public');
+        $path = $this->resizeAndStoreImage($request->file('image'));
 
-        // 3. Crear el registro en la base de datos
         $server = Server::create([
             'host' => $validatedData['host'],
             'ip' => $validatedData['ip'],
             'description' => $validatedData['description'],
-            'image_path' => $path
+            'image_path' => $path,
         ]);
 
-        // 4. Devolver el recurso creado con un código de estado 201
         return response()->json($server, 201);
     }
 
@@ -60,30 +56,62 @@ class ServerController extends Controller
      */
     public function update(Request $request, Server $server)
     {
-        // 'sometimes' significa que solo se valida si el campo está presente en la petición
         $validatedData = $request->validate([
             'host' => 'sometimes|required|string|max:255',
-            'ip' => 'sometimes|required|ip',
+            'ip' => 'sometimes|required|ipv4',
             'description' => 'sometimes|required|string|max:200',
-            'image' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048|dimensions:width=300,height=300'
+            'image' => 'sometimes|nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
-        // Si se sube una nueva imagen
         if ($request->hasFile('image')) {
-            // Borrar la imagen antigua para no dejar archivos basura
+            // Delete the old image
             if ($server->image_path) {
                 Storage::disk('public')->delete($server->image_path);
             }
-            // Guardar la nueva imagen y actualizar la ruta
-            $validatedData['image_path'] = $request->file('image')->store('servers', 'public');
+            // Resize and store the new one
+            $validatedData['image_path'] = $this->resizeAndStoreImage($request->file('image'));
         }
 
-        // Actualizar el modelo con los datos validados
         $server->update($validatedData);
-
         return response()->json($server);
     }
+    private function resizeAndStoreImage(UploadedFile $file): string
+    {
+        $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+        $path = 'servers/' . $fileName;
 
+        $imageInfo = \getimagesize($file->getRealPath()); // Add backslash
+        $sourceWidth = $imageInfo[0];
+        $sourceHeight = $imageInfo[1];
+
+        switch ($imageInfo['mime']) {
+            case 'image/jpeg':
+                $sourceImage = \imagecreatefromjpeg($file->getRealPath()); // Add backslash
+                break;
+            case 'image/png':
+                $sourceImage = \imagecreatefrompng($file->getRealPath()); // Add backslash
+                break;
+            case 'image/gif':
+                $sourceImage = \imagecreatefromgif($file->getRealPath()); // Add backslash
+                break;
+            default:
+                return '';
+        }
+
+        $targetImage = \imagecreatetruecolor(300, 300); // Add backslash
+        \imagecopyresampled($targetImage, $sourceImage, 0, 0, 0, 0, 300, 300, $sourceWidth, $sourceHeight); // Add backslash
+
+        $tempPath = \tempnam(\sys_get_temp_dir(), 'resized-image'); // Add backslashes
+        \imagepng($targetImage, $tempPath); // Add backslash
+
+        Storage::disk('public')->put($path, \file_get_contents($tempPath)); // Add backslash
+
+        \imagedestroy($sourceImage); // Add backslash
+        \imagedestroy($targetImage); // Add backslash
+        \unlink($tempPath); // Add backslash
+
+        return $path;
+    }
     /**
      * Elimina un servidor.
      */
@@ -99,5 +127,17 @@ class ServerController extends Controller
 
         // Devolver una respuesta vacía con código 204 (éxito, sin contenido)
         return response()->noContent();
+    }
+    public function updateOrder(Request $request)
+    {
+        $request->validate([
+            'serverIds' => 'required|array'
+        ]);
+
+        foreach ($request->serverIds as $index => $serverId) {
+            Server::where('id', $serverId)->update(['sort_order' => $index]);
+        }
+
+        return response()->json(['status' => 'success']);
     }
 }
