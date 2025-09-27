@@ -12,8 +12,8 @@ RUN apk add --no-cache \
     freetype-dev
 
 # Install required PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-install pdo pdo_sqlite zip gd
-
 # Install Composer (the PHP package manager)
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
