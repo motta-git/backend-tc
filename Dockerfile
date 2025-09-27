@@ -6,9 +6,6 @@ RUN apk add --no-cache \
     git \
     unzip \
     libzip-dev \
-    libpng-dev \
-    jpeg-dev \
-    freetype-dev \
     sqlite-dev \
     libpng-dev \
     jpeg-dev \
