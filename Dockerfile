@@ -28,6 +28,8 @@ RUN composer install --no-dev --optimize-autoloader
 
 RUN php artisan migrate --force
 
+RUN php artisan storage:link
+
 # Set the correct permissions for Laravel's storage
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
