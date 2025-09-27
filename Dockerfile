@@ -9,7 +9,10 @@ RUN apk add --no-cache \
     libpng-dev \
     jpeg-dev \
     freetype-dev \
-    sqlite-dev
+    sqlite-dev \
+    libpng-dev \
+    jpeg-dev \
+    freetype-dev
 
 # Install required PHP extensions
 RUN docker-php-ext-install pdo pdo_sqlite zip gd
