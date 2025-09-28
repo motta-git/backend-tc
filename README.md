@@ -2,6 +2,8 @@
 
 Este es el backend de la API para la aplicación de administración de servidores, desarrollado con Laravel 12. Provee todos los endpoints necesarios para gestionar la lista de servidores.
 
+El back end esta deployado en: https://backend-tc.onrender.com/
+
 ---
 
 ## Características Principales
